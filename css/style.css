@@ -665,6 +665,7 @@ code {
   cursor: pointer;
   transition: background .05s;
   box-sizing: border-box;
+  touch-action: manipulation;
 }
 .piano-key-white:hover { background: linear-gradient(to bottom, #e8e8ff 0%, #ffffee 100%); }
 .piano-key-white.active {
@@ -694,6 +695,7 @@ code {
   background: linear-gradient(to bottom, #1a1a2e 0%, #0d0d1a 100%);
   border-radius: 0 0 var(--radius) var(--radius);
   cursor: pointer;
+  touch-action: manipulation;
   z-index: 2;
   box-shadow: 2px 4px 8px rgba(0,0,0,.8), inset 0 -2px 4px rgba(255,255,255,.05);
   transition: background .05s;
