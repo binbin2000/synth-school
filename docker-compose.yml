@@ -1,32 +1,12 @@
 services:
-
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    restart: unless-stopped
-    expose:
-      - "3001"
-    volumes:
-      - profiles_data:/data
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/profiles', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  synth-school:
+    image: ghcr.io/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME:main
     restart: unless-stopped
     ports:
       - "8080:80"
-    depends_on:
-      api:
-        condition: service_healthy
+    volumes:
+      - profiles_data:/data
 
 volumes:
   profiles_data:
-    # Data survives container restarts and image upgrades.
-    # To back up: docker run --rm -v synth-school_profiles_data:/data -v $(pwd):/out alpine tar czf /out/profiles-backup.tar.gz /data
+    # Backup: docker run --rm -v synth-school_profiles_data:/data -v $(pwd):/out alpine tar czf /out/profiles-backup.tar.gz /data
