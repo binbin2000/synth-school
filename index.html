@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Synth School — Lär dig Synthwave med MiniFreak</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ══ TOP NAVIGATION ═══════════════════════════════════════ -->
+  <header id="top-nav">
+    <a href="#" id="nav-logo" onclick="App && App.navigateTo(null); return false;">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">Synth School</span>
+    </a>
+    <div id="nav-progress-area">
+      <div id="nav-progress-bar-container">
+        <div id="nav-progress-bar"></div>
+      </div>
+      <span id="nav-progress-label">0 / 16 lektioner</span>
+    </div>
+    <button id="sidebar-toggle" title="Visa/dölj lektionsmenyn">☰</button>
+  </header>
+
+  <!-- ══ MAIN LAYOUT ══════════════════════════════════════════ -->
+  <div id="layout">
+
+    <!-- ── LEFT SIDEBAR ─────────────────────────────────────── -->
+    <nav id="sidebar">
+      <div id="sidebar-inner">
+        <!-- Populated by app.js buildSidebar() -->
+      </div>
+    </nav>
+
+    <!-- ── CONTENT AREA ─────────────────────────────────────── -->
+    <main id="content-area">
+
+      <!-- ─ HOME SCREEN ──────────────────────────────────────── -->
+      <section id="home-screen" class="screen active">
+        <div class="hero">
+          <h1 class="hero-title neon-cyan">SYNTH SCHOOL</h1>
+          <p class="hero-subtitle">Lär dig skapa synthwave med Arturia MiniFreak — från nybörjare till producent.</p>
+          <canvas id="hero-waveform-canvas"></canvas>
+          <div class="hero-buttons">
+            <button id="start-btn" class="btn btn-primary">BÖRJA LEKTION 1</button>
+            <button id="continue-btn" class="btn btn-secondary" style="display:none">FORTSÄTT</button>
+          </div>
+        </div>
+        <div id="module-overview-grid" class="module-overview-grid">
+          <!-- Populated by app.js -->
+        </div>
+      </section>
+
+      <!-- ─ LESSON SCREEN ─────────────────────────────────────── -->
+      <section id="lesson-screen" class="screen">
+        <div id="lesson-header">
+          <div id="lesson-breadcrumb"></div>
+          <h1 id="lesson-title-display"></h1>
+          <div id="lesson-tags"></div>
+        </div>
+        <div id="lesson-body">
+          <!-- Content blocks injected by renderLesson() -->
+        </div>
+        <div id="lesson-footer">
+          <button id="prev-lesson-btn" class="btn btn-ghost">← FÖREGÅENDE</button>
+          <div id="lesson-completion-status"></div>
+          <button id="next-lesson-btn" class="btn btn-primary">NÄSTA LEKTION →</button>
+        </div>
+      </section>
+
+      <!-- ─ QUIZ RESULTS SCREEN ───────────────────────────────── -->
+      <section id="quiz-results-screen" class="screen">
+        <!-- Populated by quiz.js showResults() -->
+      </section>
+
+      <!-- ─ MODULE COMPLETE SCREEN ────────────────────────────── -->
+      <section id="module-complete-screen" class="screen">
+        <div class="module-complete-inner">
+          <div class="module-complete-icon">◈</div>
+          <h2 id="module-complete-title"></h2>
+          <p id="module-complete-text"></p>
+          <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:1.5rem">
+            <button id="module-home-btn" class="btn btn-ghost">← HEM</button>
+            <button id="module-continue-btn" class="btn btn-primary">NÄSTA MODUL →</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ══ FLOATING PIANO OVERLAY ═══════════════════════════════ -->
+  <div id="piano-overlay" class="hidden">
+    <div id="piano-overlay-header">
+      <span>♪ VIRTUELLT TANGENTBORD</span>
+      <button id="piano-overlay-close">✕</button>
+    </div>
+    <canvas id="piano-waveform-display" width="520" height="50"></canvas>
+    <div id="piano-overlay-keyboard" style="position:relative;height:90px;touch-action:none;padding:0 .75rem .25rem;"></div>
+    <div id="piano-overlay-controls">
+      <label>VÅG
+        <select id="piano-wave-select">
+          <option value="sawtooth">SAW</option>
+          <option value="square">SQR</option>
+          <option value="sine">SINE</option>
+          <option value="triangle">TRI</option>
+        </select>
+      </label>
+      <label>OKTAV
+        <input type="range" id="piano-octave" min="2" max="6" value="4">
+      </label>
+      <label>VOLYM
+        <input type="range" id="piano-volume" min="0" max="1" step="0.01" value="0.7">
+      </label>
+    </div>
+  </div>
+  <button id="piano-open-btn" title="Öppna virtuellt piano (♪)">♪</button>
+
+  <!-- ══ TOAST NOTIFICATION ═══════════════════════════════════ -->
+  <div id="toast"></div>
+
+  <!-- ══ SCRIPTS (load order matters) ═════════════════════════ -->
+  <script src="js/lessons.js"></script>
+  <script src="js/quiz.js"></script>
+  <script src="js/piano.js"></script>
+  <script src="js/synth.js"></script>
+  <script src="js/adsr-vis.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
