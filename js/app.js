@@ -38,10 +38,23 @@ var App = (() => {
     },
 
     save() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this._cache));
-      } catch (e) {
-        showToast('Progress kan inte sparas i privat läge.');
+      if (ProfileManager.isAvailable()) {
+        ProfileManager.scheduleProgressSave(this._cache);
+      } else {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(this._cache));
+        } catch (e) {
+          showToast('Progress kan inte sparas i privat läge.');
+        }
+      }
+    },
+
+    loadFromProfile(profile) {
+      const data = profile.progress;
+      if (data && data.version === SCHEMA_VERSION) {
+        this._cache = data;
+      } else {
+        this._cache = this._default();
       }
     },
 
@@ -572,33 +585,259 @@ var App = (() => {
     draw();
   }
 
-  // ── Init ──────────────────────────────────────────────────────
-  function init() {
-    // Build sidebar
+  // ── Profile UI ────────────────────────────────────────────────
+
+  const EMOJIS = ['🎹','🎸','🎵','🎶','🎧','🎷','🎺','🎻','🥁','🎼',
+                  '🌟','⚡','🔥','🦄','🤖','🐱','🐶','🐻','🦊','🐼'];
+
+  function updateNavProfile(profile) {
+    const btn    = document.getElementById('nav-profile-btn');
+    const avatar = document.getElementById('nav-profile-avatar');
+    const name   = document.getElementById('nav-profile-name');
+    if (!btn) return;
+    if (profile) {
+      avatar.textContent = profile.avatar;
+      name.textContent   = profile.name.toUpperCase();
+      btn.classList.remove('hidden');
+    } else {
+      btn.classList.add('hidden');
+    }
+  }
+
+  function showProfileScreen(canCancel = false) {
+    showScreen('profile');
+    const container = document.getElementById('profile-screen');
+    container.innerHTML = '<div class="profile-loading">Laddar…</div>';
+    ProfileManager.list().then(profiles => renderProfileScreenContent(profiles, canCancel));
+  }
+
+  function renderProfileScreenContent(profiles, canCancel) {
+    const container = document.getElementById('profile-screen');
+    container.innerHTML = '';
+
+    const inner = document.createElement('div');
+    inner.className = 'profile-screen-inner';
+
+    // Title
+    const title = document.createElement('p');
+    title.className = 'profile-screen-subtitle';
+    title.textContent = profiles.length ? 'VEM SPELAR?' : 'VÄLKOMMEN TILL SYNTH SCHOOL';
+    inner.appendChild(title);
+
+    if (profiles.length === 0) {
+      const hint = document.createElement('p');
+      hint.className = 'profile-screen-hint';
+      hint.textContent = 'Skapa din första profil för att komma igång.';
+      inner.appendChild(hint);
+    }
+
+    // Profile grid
+    const grid = document.createElement('div');
+    grid.className = 'profile-grid';
+    grid.id = 'profile-grid';
+
+    profiles.forEach(p => grid.appendChild(makeProfileCard(p, grid, canCancel)));
+
+    // "New profile" card
+    const newCard = document.createElement('div');
+    newCard.className = 'profile-card new-profile';
+    newCard.innerHTML = '<span class="profile-avatar">＋</span><span class="profile-name">NY PROFIL</span>';
+    newCard.addEventListener('click', () => {
+      newCard.style.display = 'none';
+      form.classList.remove('hidden');
+      nameInput.focus();
+    });
+    grid.appendChild(newCard);
+    inner.appendChild(grid);
+
+    // New profile form
+    const form = document.createElement('div');
+    form.className = 'new-profile-form hidden';
+    form.id = 'new-profile-form';
+
+    form.innerHTML = '<h3>NY PROFIL</h3>';
+
+    const nameInput = document.createElement('input');
+    nameInput.type        = 'text';
+    nameInput.className   = 'new-profile-input';
+    nameInput.placeholder = 'Ditt namn…';
+    nameInput.maxLength   = 40;
+    form.appendChild(nameInput);
+
+    // Emoji picker
+    const picker = document.createElement('div');
+    picker.className = 'emoji-picker';
+    let selectedEmoji = EMOJIS[0];
+    EMOJIS.forEach(e => {
+      const btn = document.createElement('button');
+      btn.className = 'emoji-btn' + (e === selectedEmoji ? ' selected' : '');
+      btn.textContent = e;
+      btn.addEventListener('click', () => {
+        picker.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedEmoji = e;
+      });
+      picker.appendChild(btn);
+    });
+    form.appendChild(picker);
+
+    // Actions
+    const actions = document.createElement('div');
+    actions.className = 'new-profile-actions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className   = 'btn btn-ghost';
+    cancelBtn.textContent = 'AVBRYT';
+    cancelBtn.addEventListener('click', () => {
+      form.classList.add('hidden');
+      newCard.style.display = '';
+      nameInput.value = '';
+    });
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className   = 'btn btn-primary';
+    saveBtn.textContent = 'SKAPA →';
+    saveBtn.addEventListener('click', async () => {
+      const name = nameInput.value.trim();
+      if (!name) { nameInput.focus(); return; }
+      saveBtn.disabled    = true;
+      saveBtn.textContent = '…';
+      try {
+        const profile = await ProfileManager.create(name, selectedEmoji);
+        onProfilePicked(profile);
+      } catch {
+        showToast('Kunde inte spara profilen.');
+        saveBtn.disabled    = false;
+        saveBtn.textContent = 'SKAPA →';
+      }
+    });
+
+    nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') saveBtn.click(); });
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(saveBtn);
+    form.appendChild(actions);
+    inner.appendChild(form);
+
+    // Cancel / back button (when switching profiles mid-session)
+    if (canCancel) {
+      const backBtn = document.createElement('button');
+      backBtn.className   = 'btn btn-ghost';
+      backBtn.style.marginTop = '1.5rem';
+      backBtn.textContent = '← TILLBAKA';
+      backBtn.addEventListener('click', () => navigateTo(state.currentLessonId || null));
+      inner.appendChild(backBtn);
+    }
+
+    container.appendChild(inner);
+
+    // Auto-expand form if no profiles yet
+    if (profiles.length === 0) {
+      newCard.style.display = 'none';
+      form.classList.remove('hidden');
+      nameInput.focus();
+    }
+  }
+
+  function makeProfileCard(profile, grid, canCancel) {
+    const card = document.createElement('div');
+    card.className = 'profile-card';
+
+    const delBtn = document.createElement('button');
+    delBtn.className   = 'profile-delete-btn';
+    delBtn.title       = 'Ta bort profil';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (delBtn.dataset.confirm) {
+        await ProfileManager.remove(profile.id);
+        if (ProfileManager.getActive()?.id === profile.id) {
+          ProfileManager.deselect();
+          updateNavProfile(null);
+        }
+        ProfileManager.list().then(ps => renderProfileScreenContent(ps, canCancel));
+      } else {
+        delBtn.dataset.confirm = '1';
+        delBtn.textContent     = '?';
+        delBtn.style.color     = 'var(--neon-pink)';
+        delBtn.style.opacity   = '1';
+        setTimeout(() => {
+          if (delBtn.dataset.confirm) {
+            delete delBtn.dataset.confirm;
+            delBtn.textContent   = '✕';
+            delBtn.style.color   = '';
+            delBtn.style.opacity = '';
+          }
+        }, 3000);
+      }
+    });
+
+    const avatar = document.createElement('span');
+    avatar.className   = 'profile-avatar';
+    avatar.textContent = profile.avatar;
+
+    const name = document.createElement('span');
+    name.className   = 'profile-name';
+    name.textContent = profile.name;
+
+    card.appendChild(delBtn);
+    card.appendChild(avatar);
+    card.appendChild(name);
+
+    card.addEventListener('click', async () => {
+      card.classList.add('loading');
+      const full = await ProfileManager.select(profile.id);
+      if (full) onProfilePicked(full);
+    });
+
+    return card;
+  }
+
+  function onProfilePicked(profile) {
+    Progress.loadFromProfile(profile);
+    updateNavProfile(profile);
+    startApp();
+  }
+
+  function switchToProfile(profile) {
+    Progress.loadFromProfile(profile);
+    updateNavProfile(profile);
+    state.currentLessonId = null;
     buildSidebar();
     updateProgressBar();
+    navigateTo(null);
+  }
 
-    // Hero animation
+  // ── startApp — runs after profile is resolved ─────────────────
+  function startApp() {
+    buildSidebar();
+    updateProgressBar();
     animateHeroWaveform();
 
     // Start button
-    document.getElementById('start-btn')?.addEventListener('click', () => {
-      navigateTo(1);
-    });
+    const startBtn = document.getElementById('start-btn');
+    if (startBtn) {
+      startBtn.onclick = () => navigateTo(1);
+    }
 
     // Continue button
     const lastVisited = Progress.load().lastVisited;
     const contBtn = document.getElementById('continue-btn');
-    if (lastVisited && contBtn) {
-      const les = window.LESSONS[lastVisited];
-      contBtn.style.display = '';
-      contBtn.textContent = `FORTSÄTT L${lastVisited}: ${les?.title?.toUpperCase() || ''}`;
-      contBtn.addEventListener('click', () => navigateTo(lastVisited));
+    if (contBtn) {
+      if (lastVisited) {
+        const les = window.LESSONS[lastVisited];
+        contBtn.style.display = '';
+        contBtn.textContent   = `FORTSÄTT L${lastVisited}: ${les?.title?.toUpperCase() || ''}`;
+        contBtn.onclick = () => navigateTo(lastVisited);
+      } else {
+        contBtn.style.display = 'none';
+      }
     }
 
-    // Module overview cards
+    // Module overview cards (rebuild each time in case of profile switch)
     const grid = document.getElementById('module-overview-grid');
     if (grid) {
+      grid.innerHTML = '';
       window.MODULES.forEach(mod => {
         const completed = mod.lessonIds.filter(id => Progress.isCompleted(id)).length;
         const card = document.createElement('div');
@@ -618,13 +857,25 @@ var App = (() => {
       });
     }
 
-    // Sidebar backdrop for mobile overlay
+    showScreen('home');
+
+    // Deep link via URL hash (only on first load)
+    const hash = window.location.hash;
+    const match = hash.match(/^#lesson-(\d+)$/);
+    if (match) {
+      const lessonId = parseInt(match[1]);
+      if (window.LESSONS[lessonId]) navigateTo(lessonId);
+    }
+  }
+
+  // ── Init — detects API, resolves profile, then calls startApp ─
+  async function init() {
+    // One-time setup (not profile-dependent)
     const backdrop = document.createElement('div');
     backdrop.id = 'sidebar-backdrop';
     document.getElementById('layout')?.appendChild(backdrop);
     backdrop.addEventListener('click', closeMobileSidebar);
 
-    // Sidebar toggle: overlay on mobile, collapse on desktop
     document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
       const layout = document.getElementById('layout');
       if (window.innerWidth <= 768) {
@@ -634,16 +885,35 @@ var App = (() => {
       }
     });
 
-    // Piano init
+    document.getElementById('nav-profile-btn')?.addEventListener('click', () => {
+      showProfileScreen(true);
+    });
+
     Piano.init();
 
-    // Deep link via URL hash
-    const hash = window.location.hash;
-    const match = hash.match(/^#lesson-(\d+)$/);
-    if (match) {
-      const lessonId = parseInt(match[1]);
-      if (window.LESSONS[lessonId]) navigateTo(lessonId);
+    // Profile resolution
+    const apiAvailable = await ProfileManager.detectAPI();
+
+    if (!apiAvailable) {
+      // Offline / local-file mode — use localStorage as before
+      startApp();
+      return;
     }
+
+    // API available — try to restore last-used profile
+    const storedId = ProfileManager.getStoredId();
+    if (storedId) {
+      const profile = await ProfileManager.select(storedId);
+      if (profile) {
+        Progress.loadFromProfile(profile);
+        updateNavProfile(profile);
+        startApp();
+        return;
+      }
+    }
+
+    // No profile stored or profile no longer exists — show picker
+    showProfileScreen(false);
   }
 
   // ── DOMContentLoaded ──────────────────────────────────────────

@@ -20,6 +20,10 @@
       </div>
       <span id="nav-progress-label">0 / 16 lektioner</span>
     </div>
+    <button id="nav-profile-btn" class="nav-profile-badge hidden" title="Byt profil">
+      <span id="nav-profile-avatar">🎹</span>
+      <span id="nav-profile-name"></span>
+    </button>
     <button id="sidebar-toggle" title="Visa/dölj lektionsmenyn">☰</button>
   </header>
 
@@ -35,6 +39,11 @@
 
     <!-- ── CONTENT AREA ─────────────────────────────────────── -->
     <main id="content-area">
+
+      <!-- ─ PROFILE SCREEN ─────────────────────────────────────── -->
+      <section id="profile-screen" class="screen">
+        <!-- Populated by app.js showProfileScreen() -->
+      </section>
 
       <!-- ─ HOME SCREEN ──────────────────────────────────────── -->
       <section id="home-screen" class="screen active">
@@ -121,6 +130,7 @@
   <div id="toast"></div>
 
   <!-- ══ SCRIPTS (load order matters) ═════════════════════════ -->
+  <script src="js/profiles.js"></script>
   <script src="js/lessons.js"></script>
   <script src="js/quiz.js"></script>
   <script src="js/piano.js"></script>

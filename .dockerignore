@@ -2,3 +2,4 @@
 .github
 *.md
 .dockerignore
+docker-compose.yml
