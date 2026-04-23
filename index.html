@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="sv" id="html-root">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -24,6 +24,7 @@
       <span id="nav-profile-avatar">🎹</span>
       <span id="nav-profile-name"></span>
     </button>
+    <button id="nav-lang-btn" class="nav-lang-btn" title="Byt språk / Change language">🇬🇧</button>
     <button id="sidebar-toggle" title="Visa/dölj lektionsmenyn">☰</button>
   </header>
 
@@ -130,8 +131,10 @@
   <div id="toast"></div>
 
   <!-- ══ SCRIPTS (load order matters) ═════════════════════════ -->
+  <script src="js/i18n.js"></script>
   <script src="js/profiles.js"></script>
   <script src="js/lessons.js"></script>
+  <script src="js/lessons-en.js"></script>
   <script src="js/quiz.js"></script>
   <script src="js/piano.js"></script>
   <script src="js/synth.js"></script>

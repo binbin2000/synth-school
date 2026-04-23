@@ -54,13 +54,13 @@ var ProfileManager = (() => {
     } catch { return null; }
   }
 
-  async function create(name, avatar) {
+  async function create(name, avatar, lang = 'sv') {
     const r = await fetch(`${API}/profiles`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ name, avatar }),
+      body:    JSON.stringify({ name, avatar, lang }),
     });
-    if (!r.ok) throw new Error('Kunde inte skapa profil');
+    if (!r.ok) throw new Error('Could not create profile');
     return r.json();
   }
 

@@ -42,7 +42,7 @@ var App = (() => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this._cache));
       } catch (e) {
-        showToast('Progress kan inte sparas i privat läge.');
+        showToast(I18n.t('private_warning'));
       }
       // Also schedule API save when a profile is active
       if (ProfileManager.isAvailable()) {
@@ -139,7 +139,7 @@ var App = (() => {
     const bar = document.getElementById('nav-progress-bar');
     const label = document.getElementById('nav-progress-label');
     if (bar) bar.style.width = pct + '%';
-    if (label) label.textContent = `${done} / ${total} lektioner`;
+    if (label) label.textContent = I18n.t('progress_label', done, total);
   }
 
   // ── Sidebar ───────────────────────────────────────────────────
@@ -148,20 +148,20 @@ var App = (() => {
     if (!inner) return;
     inner.innerHTML = '';
 
-    window.MODULES.forEach(mod => {
+    I18n.getModules().forEach(mod => {
       const group = document.createElement('div');
       group.className = 'module-group';
 
       const header = document.createElement('div');
       header.className = 'module-header';
-      header.textContent = `Modul ${mod.id} — ${mod.title}`;
+      header.textContent = `${I18n.t('module_word')} ${mod.id} — ${mod.title}`;
       group.appendChild(header);
 
       const ul = document.createElement('ul');
       ul.className = 'lesson-list';
 
       mod.lessonIds.forEach(lid => {
-        const lesson = window.LESSONS[lid];
+        const lesson = I18n.getLessons()[lid];
         if (!lesson) return;
         const completed = Progress.isCompleted(lid);
         const skipped   = Progress.isSkipped(lid);
@@ -181,7 +181,7 @@ var App = (() => {
 
         const title = document.createElement('span');
         title.className = 'lesson-title';
-        title.textContent = `L${lid}: ${lesson.title}`;
+        title.textContent = `${I18n.t('lesson_word').charAt(0)}${lid}: ${lesson.title}`;
 
         li.appendChild(icon);
         li.appendChild(title);
@@ -213,7 +213,7 @@ var App = (() => {
       return;
     }
 
-    const lesson = window.LESSONS[lessonId];
+    const lesson = I18n.getLessons()[lessonId];
     if (!lesson) return;
 
     state.currentLessonId = lessonId;
@@ -229,13 +229,13 @@ var App = (() => {
 
   // ── Lesson rendering ──────────────────────────────────────────
   function renderLesson(lessonId) {
-    const lesson = window.LESSONS[lessonId];
+    const lesson = I18n.getLessons()[lessonId];
     if (!lesson) return;
 
     // Header
-    const mod = window.MODULES.find(m => m.id === lesson.moduleId);
+    const mod = I18n.getModules().find(m => m.id === lesson.moduleId);
     document.getElementById('lesson-breadcrumb').textContent =
-      `Modul ${lesson.moduleId}: ${mod?.title || ''} › Lektion ${lessonId}`;
+      `${I18n.t('module_word')} ${lesson.moduleId}: ${mod?.title || ''} › ${I18n.t('lesson_word')} ${lessonId}`;
     document.getElementById('lesson-title-display').textContent = lesson.title;
 
     const tagsEl = document.getElementById('lesson-tags');
@@ -260,11 +260,12 @@ var App = (() => {
     const nextBtn = document.getElementById('next-lesson-btn');
     const statusEl = document.getElementById('lesson-completion-status');
 
+    prevBtn.textContent = I18n.t('prev_btn');
     prevBtn.style.visibility = lessonId === 1 ? 'hidden' : 'visible';
     prevBtn.onclick = () => navigateTo(lessonId - 1);
 
     // Hide the next button — progression is driven by the inline quiz result
-    if (nextBtn) nextBtn.style.display = 'none';
+    if (nextBtn) { nextBtn.style.display = 'none'; nextBtn.textContent = I18n.t('next_btn'); }
 
     const completed = Progress.isCompleted(lessonId);
     const skipped   = Progress.isSkipped(lessonId);
@@ -276,12 +277,11 @@ var App = (() => {
       const skipBtn = document.createElement('button');
       skipBtn.id = 'skip-lesson-btn';
       skipBtn.className = 'btn-skip-lesson';
-      skipBtn.textContent = 'HOPPA ÖVER →';
-      skipBtn.title = 'Hoppa över den här lektionen och fortsätt';
+      skipBtn.textContent = I18n.t('skip_btn');
       skipBtn.addEventListener('click', () => {
         Progress.skip(lessonId);
         const nextId = lessonId + 1;
-        if (window.LESSONS[nextId]) {
+        if (I18n.getLessons()[nextId]) {
           navigateTo(nextId);
         } else {
           navigateTo(null);
@@ -291,8 +291,8 @@ var App = (() => {
     }
 
     statusEl.innerHTML = completed
-      ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--neon-green)">✓ AVKLARAD</span>`
-      : (skipped ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--neon-purple)">⤵ HOPPAD ÖVER</span>` : '');
+      ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--neon-green)">${I18n.t('status_completed')}</span>`
+      : (skipped ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--neon-purple)">${I18n.t('status_skipped')}</span>` : '');
   }
 
   // ── Block renderer ────────────────────────────────────────────
@@ -371,78 +371,105 @@ var App = (() => {
     block.className = 'block-minifreak';
 
     // Sections in actual left-to-right panel order with real control names
+    const lang = I18n.getLang();
     const sections = [
       {
         id: 'preset', name: 'PRESET', color: '#bf5fff',
         controls: ['PRESET NAME', 'BANK ◂ ▸', 'LOAD / SAVE', 'DISPLAY'],
-        desc: 'Preset-hantering med OLED-display. Bläddra bland bankens ljud med pilknapparna. SAVE sparar dina ändringar. Håll inne SHIFT för extra funktioner.'
+        desc: lang === 'en'
+          ? 'Preset management with OLED display. Browse presets with the arrow buttons. SAVE stores your edits. Hold SHIFT for secondary functions.'
+          : 'Preset-hantering med OLED-display. Bläddra bland bankens ljud med pilknapparna. SAVE sparar dina ändringar. Håll inne SHIFT för extra funktioner.'
       },
       {
         id: 'osc-a', name: 'OSC A', color: '#00fff7',
         controls: ['TYPE', 'WAVE', 'TIMBRE', 'SHAPE'],
-        desc: 'Digital oscillator A. TYPE väljer syntestyp — Virtual Analog, Wavetable, FM, Chords, Speech m.fl. WAVE väljer vågform/preset. TIMBRE och SHAPE formar klangfärgen beroende på vald syntestyp.'
+        desc: lang === 'en'
+          ? 'Digital oscillator A. TYPE selects synthesis type — Virtual Analog, Wavetable, FM, Chords, Speech and more. WAVE selects the waveform/preset. TIMBRE and SHAPE sculpt the tonal character depending on the chosen synthesis type.'
+          : 'Digital oscillator A. TYPE väljer syntestyp — Virtual Analog, Wavetable, FM, Chords, Speech m.fl. WAVE väljer vågform/preset. TIMBRE och SHAPE formar klangfärgen beroende på vald syntestyp.'
       },
       {
         id: 'osc-b', name: 'OSC B', color: '#00fff7',
         controls: ['TYPE', 'WAVE', 'TIMBRE', 'SHAPE', 'SEMI', 'FINE'],
-        desc: 'Digital oscillator B — identisk arkitektur som A men helt oberoende. SEMI stämmer om OSC B i halvtoner relativt A (t.ex. +7 = kvint). FINE för mikrostämning i cent. Blanda olika syntestyper för komplexa klanger.'
+        desc: lang === 'en'
+          ? 'Digital oscillator B — identical architecture to A but fully independent. SEMI tunes OSC B in semitones relative to A (e.g. +7 = fifth). FINE for microtuning in cents. Mix different synthesis types for complex timbres.'
+          : 'Digital oscillator B — identisk arkitektur som A men helt oberoende. SEMI stämmer om OSC B i halvtoner relativt A (t.ex. +7 = kvint). FINE för mikrostämning i cent. Blanda olika syntestyper för komplexa klanger.'
       },
       {
         id: 'mix', name: 'MIX', color: '#00fff7',
         controls: ['OSC A/B'],
-        desc: 'Mixar balansen mellan OSC A och OSC B. Vrid vänster för enbart A, höger för enbart B, mitten för 50/50-mix. Enkelt men kraftfullt — prova att detuning OSC B och mixa in lite för bred, levande klang.'
+        desc: lang === 'en'
+          ? 'Blends the balance between OSC A and OSC B. Turn left for only A, right for only B, centre for 50/50. Simple but powerful — try detuning OSC B and blending a little for a wide, living sound.'
+          : 'Mixar balansen mellan OSC A och OSC B. Vrid vänster för enbart A, höger för enbart B, mitten för 50/50-mix. Enkelt men kraftfullt — prova att detuning OSC B och mixa in lite för bred, levande klang.'
       },
       {
         id: 'filter', name: 'FILTER', color: '#ff2d78',
         controls: ['CUTOFF', 'RESONANCE', 'ENV AMT', 'LP · BP · HP'],
-        desc: 'Analogt Steiner-Parker-filter — en av MiniFreaks stoltaste funktioner. CUTOFF styr vilka frekvenser som släpps igenom. RESONANCE skapar en topp vid cutoff-frekvensen. ENV AMT avgör hur mycket Env 1 påverkar filtret. Välj LP (lågpass), BP (bandpass) eller HP (högpass) med switchen.'
+        desc: lang === 'en'
+          ? 'Analogue Steiner-Parker filter — one of the MiniFreak\'s proudest features. CUTOFF controls which frequencies pass through. RESONANCE creates a peak at the cutoff frequency. ENV AMT determines how much Env 1 modulates the filter. Choose LP (low-pass), BP (band-pass) or HP (high-pass) with the switch.'
+          : 'Analogt Steiner-Parker-filter — en av MiniFreaks stoltaste funktioner. CUTOFF styr vilka frekvenser som släpps igenom. RESONANCE skapar en topp vid cutoff-frekvensen. ENV AMT avgör hur mycket Env 1 påverkar filtret. Välj LP (lågpass), BP (bandpass) eller HP (högpass) med switchen.'
       },
       {
         id: 'env1', name: 'ENV 1', color: '#ff2d78',
         controls: ['ATTACK', 'DECAY', 'SUSTAIN', 'RELEASE'],
-        desc: 'Modulationsenvelope (ADSR). Styr som standard filter-cutoff via ENV AMT-knappen, men kan modulera nästan vad som helst via Mod Matrix. Snabb attack + kort decay = pluck-filter. Lång attack + hög sustain = svällande pad-filter.'
+        desc: lang === 'en'
+          ? 'Modulation envelope (ADSR). Controls filter cutoff via ENV AMT by default, but can modulate almost anything via the Mod Matrix. Fast attack + short decay = pluck filter. Long attack + high sustain = swelling pad filter.'
+          : 'Modulationsenvelope (ADSR). Styr som standard filter-cutoff via ENV AMT-knappen, men kan modulera nästan vad som helst via Mod Matrix. Snabb attack + kort decay = pluck-filter. Lång attack + hög sustain = svällande pad-filter.'
       },
       {
         id: 'env2', name: 'ENV 2', color: '#ff2d78',
         controls: ['ATTACK', 'DECAY', 'SUSTAIN', 'RELEASE'],
-        desc: 'Amplitud-envelope (VCA). Det här är den viktigaste envelopen — den styr hur volymen förändras över tid. Kort attack + kort release = perkussivt ljud. Lång attack = fade-in. Lång release = efterklang. ADSR på ENV 2 är det du hör direkt.'
+        desc: lang === 'en'
+          ? 'Amplitude envelope (VCA). This is the most important envelope — it controls how the volume changes over time. Short attack + short release = percussive sound. Long attack = fade-in. Long release = sustained trail. ADSR on ENV 2 is what you hear immediately.'
+          : 'Amplitud-envelope (VCA). Det här är den viktigaste envelopen — den styr hur volymen förändras över tid. Kort attack + kort release = perkussivt ljud. Lång attack = fade-in. Lång release = efterklang. ADSR på ENV 2 är det du hör direkt.'
       },
       {
         id: 'lfo1', name: 'LFO 1', color: '#bf5fff',
         controls: ['RATE', 'WAVE', 'RISE', 'SHAPE'],
-        desc: 'Lågfrekvensoscillator 1. RATE styr hastighet (0,01 Hz–100 Hz eller BPM-synkat). WAVE väljer form (sinus, triangel, såg, firkant, sample&hold). RISE ger mjuk fade-in av LFO. Koppla till destination via Mod Matrix — klassiskt: LFO 1 → PITCH för vibrato.'
+        desc: lang === 'en'
+          ? 'Low Frequency Oscillator 1. RATE controls speed (0.01 Hz–100 Hz or BPM-synced). WAVE selects shape (sine, triangle, saw, square, sample&hold). RISE gives a soft fade-in of the LFO. Assign to a destination via the Mod Matrix — classic: LFO 1 → PITCH for vibrato.'
+          : 'Lågfrekvensoscillator 1. RATE styr hastighet (0,01 Hz–100 Hz eller BPM-synkat). WAVE väljer form (sinus, triangel, såg, firkant, sample&hold). RISE ger mjuk fade-in av LFO. Koppla till destination via Mod Matrix — klassiskt: LFO 1 → PITCH för vibrato.'
       },
       {
         id: 'lfo2', name: 'LFO 2', color: '#bf5fff',
         controls: ['RATE', 'WAVE', 'RISE', 'SHAPE'],
-        desc: 'Lågfrekvensoscillator 2 — identisk med LFO 1. Koppla till en annan destination för dubbel modulationsrörelse. Populärt exempel: LFO 1 → Filter cutoff (långsam svepning) + LFO 2 → OSC B pitch (snabb tremolo).'
+        desc: lang === 'en'
+          ? 'Low Frequency Oscillator 2 — identical to LFO 1. Route to a different destination for dual modulation movement. Popular example: LFO 1 → Filter cutoff (slow sweep) + LFO 2 → OSC B pitch (fast tremolo).'
+          : 'Lågfrekvensoscillator 2 — identisk med LFO 1. Koppla till en annan destination för dubbel modulationsrörelse. Populärt exempel: LFO 1 → Filter cutoff (långsam svepning) + LFO 2 → OSC B pitch (snabb tremolo).'
       },
       {
         id: 'effects', name: 'EFFECTS', color: '#00fff7',
         controls: ['MOD (amount)', 'DELAY (time)', 'REVERB (size)', 'MOD TYPE', 'DELAY TYPE', 'REVERB TYPE'],
-        desc: 'Tre parallella effektblock. MOD: Chorus, Flanger, Phaser eller Ensemble — ger bredd och rörelse. DELAY: ekko med BPM-sync, Ping Pong eller analog eko-karaktär. REVERB: Hall, Room, Plate eller Spring — ger rumslig dimension. Varje block har amount-reglage + typval.'
+        desc: lang === 'en'
+          ? 'Three parallel effects blocks. MOD: Chorus, Flanger, Phaser or Ensemble — adds width and movement. DELAY: echo with BPM-sync, Ping Pong or analogue echo character. REVERB: Hall, Room, Plate or Spring — adds spatial dimension. Each block has an amount knob + type selector.'
+          : 'Tre parallella effektblock. MOD: Chorus, Flanger, Phaser eller Ensemble — ger bredd och rörelse. DELAY: ekko med BPM-sync, Ping Pong eller analog eko-karaktär. REVERB: Hall, Room, Plate eller Spring — ger rumslig dimension. Varje block har amount-reglage + typval.'
       },
       {
         id: 'arp', name: 'ARP / SEQ', color: '#bf5fff',
         controls: ['ON/OFF', 'RATE', 'GATE', 'MODE', 'OCT', 'HOLD'],
-        desc: 'Arpeggiator och 16-stegs Step Sequencer delar samma sektion. ARP: håll ett ackord och välj mönster (Up, Down, Up-Down, Random) och oktavomfång. SEQ: spela in egna melodislingor upp till 64 steg med variabel gatelängd och transposition per steg.'
+        desc: lang === 'en'
+          ? 'Arpeggiator and 16-step Step Sequencer share this section. ARP: hold a chord and select a pattern (Up, Down, Up-Down, Random) and octave range. SEQ: record your own melodic loops up to 64 steps with variable gate length and per-step transposition.'
+          : 'Arpeggiator och 16-stegs Step Sequencer delar samma sektion. ARP: håll ett ackord och välj mönster (Up, Down, Up-Down, Random) och oktavomfång. SEQ: spela in egna melodislingor upp till 64 steg med variabel gatelängd och transposition per steg.'
       },
       {
         id: 'macros', name: 'MACROS', color: '#ff2d78',
         controls: ['MACRO 1', 'MACRO 2', 'MACRO 3', 'MACRO 4'],
-        desc: '4 programmerbara knappar för live-kontroll. Varje Macro kan kopplas till flera parametrar med individuell intensitet. Perfekt för scen: en knapptryckning kan öppna filtret, höja reverben och ändra LFO-hastigheten samtidigt. Assignas via MATRIX-knappen.'
+        desc: lang === 'en'
+          ? '4 programmable buttons for live control. Each Macro can be linked to multiple parameters with individual intensity. Perfect for the stage: one button press can open the filter, raise the reverb and change the LFO rate simultaneously. Assign via the MATRIX button.'
+          : '4 programmerbara knappar för live-kontroll. Varje Macro kan kopplas till flera parametrar med individuell intensitet. Perfekt för scen: en knapptryckning kan öppna filtret, höja reverben och ändra LFO-hastigheten samtidigt. Assignas via MATRIX-knappen.'
       },
       {
         id: 'spice', name: 'SPICE / DICE', color: '#bf5fff',
         controls: ['SPICE ●', 'DICE ◈'],
-        desc: 'Två unika knappar. SPICE: vrider subtilt på flera parametrar för att "krydda" nuvarande preset utan att radera det — bra för variation. DICE: randomiserar ett helt nytt ljud inom vald kategori — idealiskt för inspiration och att hitta oväntade klanger.'
+        desc: lang === 'en'
+          ? 'Two unique buttons. SPICE: subtly tweaks multiple parameters to "spice up" the current preset without erasing it — great for variation. DICE: randomises a brand new sound within the selected category — ideal for inspiration and finding unexpected timbres.'
+          : 'Två unika knappar. SPICE: vrider subtilt på flera parametrar för att "krydda" nuvarande preset utan att radera det — bra för variation. DICE: randomiserar ett helt nytt ljud inom vald kategori — idealiskt för inspiration och att hitta oväntade klanger.'
       },
     ];
 
     // ── Header ────────────────────────────────────────────────────
     const header = document.createElement('div');
     header.className = 'minifreak-header';
-    header.innerHTML = '<span style="color:var(--neon-cyan)">Arturia MiniFreak</span> — klicka på en sektion för detaljer';
+    header.innerHTML = `<span style="color:var(--neon-cyan)">Arturia MiniFreak</span> — ${I18n.t('mf_header')}`;
     block.appendChild(header);
 
     // ── Panel ─────────────────────────────────────────────────────
@@ -498,7 +525,7 @@ var App = (() => {
     // ── Detail box ────────────────────────────────────────────────
     const detail = document.createElement('div');
     detail.className = 'minifreak-detail';
-    detail.textContent = '← Klicka på en sektion ovan för att läsa om dess funktion.';
+    detail.textContent = I18n.t('mf_click_hint');
     block.appendChild(detail);
 
     // Click interaction
@@ -518,20 +545,15 @@ var App = (() => {
 
   // ── Next lesson flow ──────────────────────────────────────────
   function handleNext(lessonId) {
-    const lesson = window.LESSONS[lessonId];
+    const lesson = I18n.getLessons()[lessonId];
     const completed = Progress.isCompleted(lessonId);
 
-    // handleNext is now only called from module-complete and course-complete flows
-    // Quiz-driven navigation happens inline via Quiz.showResults buttons
-
-    // Last lesson
     if (lessonId === 16) {
       showCourseComplete();
       return;
     }
 
-    // Check if end of module
-    const currentMod = window.MODULES.find(m => m.lessonIds.includes(lessonId));
+    const currentMod = I18n.getModules().find(m => m.lessonIds.includes(lessonId));
     const isLastInModule = currentMod && currentMod.lessonIds[currentMod.lessonIds.length - 1] === lessonId;
 
     if (isLastInModule && completed) {
@@ -542,12 +564,11 @@ var App = (() => {
   }
 
   function handleNextAfterQuiz(lessonId) {
-    const lesson = window.LESSONS[lessonId];
     if (lessonId === 16) {
       showCourseComplete();
       return;
     }
-    const currentMod = window.MODULES.find(m => m.lessonIds.includes(lessonId));
+    const currentMod = I18n.getModules().find(m => m.lessonIds.includes(lessonId));
     const isLastInModule = currentMod && currentMod.lessonIds[currentMod.lessonIds.length - 1] === lessonId;
     if (isLastInModule) {
       showModuleComplete(currentMod, lessonId);
@@ -557,33 +578,33 @@ var App = (() => {
   }
 
   function showModuleComplete(mod, finishedLessonId) {
-    const nextModId = mod.id + 1;
-    const nextMod = window.MODULES.find(m => m.id === nextModId);
+    const nextMod = I18n.getModules().find(m => m.id === mod.id + 1);
 
-    document.getElementById('module-complete-title').textContent = `Modul ${mod.id} klar!`;
-    document.getElementById('module-complete-text').textContent =
-      nextMod
-        ? `Du har klarat "${mod.title}". Nästa upp: Modul ${nextMod.id} — ${nextMod.title}.`
-        : `Du har klarat alla moduler! Dags att göra din första synthwave-låt.`;
+    document.getElementById('module-complete-title').textContent = I18n.t('module_done_title', mod.id);
+    document.getElementById('module-complete-text').textContent = nextMod
+      ? I18n.t('module_done_next', mod.title, nextMod.id, nextMod.title)
+      : I18n.t('module_done_last', mod.title);
 
     const contBtn = document.getElementById('module-continue-btn');
     const homeBtn = document.getElementById('module-home-btn');
 
+    contBtn.textContent = I18n.t('next_module_btn');
+    homeBtn.textContent = I18n.t('home_btn');
     contBtn.style.display = nextMod ? '' : 'none';
-    if (nextMod) {
-      contBtn.onclick = () => navigateTo(nextMod.lessonIds[0]);
-    }
+    if (nextMod) contBtn.onclick = () => navigateTo(nextMod.lessonIds[0]);
     homeBtn.onclick = () => navigateTo(null);
 
     showScreen('module-complete');
   }
 
   function showCourseComplete() {
-    document.getElementById('module-complete-title').textContent = 'Kurs avklarad! ◈';
-    document.getElementById('module-complete-text').textContent =
-      'Du har gått igenom hela Synth School! Öppna din MiniFreak och skapa din första synthwave-låt.';
-    document.getElementById('module-continue-btn').style.display = 'none';
-    document.getElementById('module-home-btn').onclick = () => navigateTo(null);
+    document.getElementById('module-complete-title').textContent = I18n.t('course_done_title');
+    document.getElementById('module-complete-text').textContent = I18n.t('course_done_text');
+    const contBtn = document.getElementById('module-continue-btn');
+    const homeBtn = document.getElementById('module-home-btn');
+    contBtn.style.display = 'none';
+    homeBtn.textContent = I18n.t('home_btn');
+    homeBtn.onclick = () => navigateTo(null);
     showScreen('module-complete');
   }
 
@@ -651,7 +672,7 @@ var App = (() => {
   function showProfileScreen(canCancel = false) {
     showScreen('profile');
     const container = document.getElementById('profile-screen');
-    container.innerHTML = '<div class="profile-loading">Laddar…</div>';
+    container.innerHTML = `<div class="profile-loading">${I18n.t('profile_loading')}</div>`;
     ProfileManager.list().then(profiles => renderProfileScreenContent(profiles, canCancel));
   }
 
@@ -665,13 +686,13 @@ var App = (() => {
     // Title
     const title = document.createElement('p');
     title.className = 'profile-screen-subtitle';
-    title.textContent = profiles.length ? 'VEM SPELAR?' : 'VÄLKOMMEN TILL SYNTH SCHOOL';
+    title.textContent = profiles.length ? I18n.t('who_plays') : I18n.t('welcome');
     inner.appendChild(title);
 
     if (profiles.length === 0) {
       const hint = document.createElement('p');
       hint.className = 'profile-screen-hint';
-      hint.textContent = 'Skapa din första profil för att komma igång.';
+      hint.textContent = I18n.t('first_hint');
       inner.appendChild(hint);
     }
 
@@ -685,7 +706,7 @@ var App = (() => {
     // "New profile" card
     const newCard = document.createElement('div');
     newCard.className = 'profile-card new-profile';
-    newCard.innerHTML = '<span class="profile-avatar">＋</span><span class="profile-name">NY PROFIL</span>';
+    newCard.innerHTML = `<span class="profile-avatar">＋</span><span class="profile-name">${I18n.t('new_profile_card')}</span>`;
     newCard.addEventListener('click', () => {
       newCard.style.display = 'none';
       form.classList.remove('hidden');
@@ -699,12 +720,12 @@ var App = (() => {
     form.className = 'new-profile-form hidden';
     form.id = 'new-profile-form';
 
-    form.innerHTML = '<h3>NY PROFIL</h3>';
+    form.innerHTML = `<h3>${I18n.t('new_profile_title')}</h3>`;
 
     const nameInput = document.createElement('input');
     nameInput.type        = 'text';
     nameInput.className   = 'new-profile-input';
-    nameInput.placeholder = 'Ditt namn…';
+    nameInput.placeholder = I18n.t('name_placeholder');
     nameInput.maxLength   = 40;
     form.appendChild(nameInput);
 
@@ -725,13 +746,31 @@ var App = (() => {
     });
     form.appendChild(picker);
 
+    // Language picker
+    const langPicker = document.createElement('div');
+    langPicker.className = 'lang-picker';
+    let selectedLang = I18n.getLang();
+    [{ val: 'sv', label: '🇸🇪 Svenska' }, { val: 'en', label: '🇬🇧 English' }].forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'lang-option' + (opt.val === selectedLang ? ' selected' : '');
+      btn.textContent = opt.label;
+      btn.dataset.lang = opt.val;
+      btn.addEventListener('click', () => {
+        langPicker.querySelectorAll('.lang-option').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedLang = opt.val;
+      });
+      langPicker.appendChild(btn);
+    });
+    form.appendChild(langPicker);
+
     // Actions
     const actions = document.createElement('div');
     actions.className = 'new-profile-actions';
 
     const cancelBtn = document.createElement('button');
     cancelBtn.className   = 'btn btn-ghost';
-    cancelBtn.textContent = 'AVBRYT';
+    cancelBtn.textContent = I18n.t('cancel_btn');
     cancelBtn.addEventListener('click', () => {
       form.classList.add('hidden');
       newCard.style.display = '';
@@ -740,19 +779,19 @@ var App = (() => {
 
     const saveBtn = document.createElement('button');
     saveBtn.className   = 'btn btn-primary';
-    saveBtn.textContent = 'SKAPA →';
+    saveBtn.textContent = I18n.t('create_btn');
     saveBtn.addEventListener('click', async () => {
       const name = nameInput.value.trim();
       if (!name) { nameInput.focus(); return; }
       saveBtn.disabled    = true;
       saveBtn.textContent = '…';
       try {
-        const profile = await ProfileManager.create(name, selectedEmoji);
+        const profile = await ProfileManager.create(name, selectedEmoji, selectedLang);
         onProfilePicked(profile);
       } catch {
-        showToast('Kunde inte spara profilen.');
+        showToast(I18n.t('save_error'));
         saveBtn.disabled    = false;
-        saveBtn.textContent = 'SKAPA →';
+        saveBtn.textContent = I18n.t('create_btn');
       }
     });
 
@@ -768,7 +807,7 @@ var App = (() => {
       const backBtn = document.createElement('button');
       backBtn.className   = 'btn btn-ghost';
       backBtn.style.marginTop = '1.5rem';
-      backBtn.textContent = '← TILLBAKA';
+      backBtn.textContent = I18n.t('back_btn');
       backBtn.addEventListener('click', () => navigateTo(state.currentLessonId || null));
       inner.appendChild(backBtn);
     }
@@ -789,7 +828,7 @@ var App = (() => {
 
     const delBtn = document.createElement('button');
     delBtn.className   = 'profile-delete-btn';
-    delBtn.title       = 'Ta bort profil';
+    delBtn.title       = I18n.t('delete_title');
     delBtn.textContent = '✕';
     delBtn.addEventListener('click', async e => {
       e.stopPropagation();
@@ -838,22 +877,84 @@ var App = (() => {
   }
 
   function onProfilePicked(profile) {
+    I18n.setLang(profile.lang || 'sv');
     Progress.loadFromProfile(profile);
     updateNavProfile(profile);
     startApp();
   }
 
   function switchToProfile(profile) {
+    I18n.setLang(profile.lang || 'sv');
     Progress.loadFromProfile(profile);
     updateNavProfile(profile);
     state.currentLessonId = null;
     buildSidebar();
     updateProgressBar();
+    applyUILang();
     navigateTo(null);
+  }
+
+  // ── Apply UI language strings to static DOM elements ──────────
+  function applyUILang() {
+    const lang = I18n.getLang();
+    document.documentElement.lang = lang;
+    document.title = lang === 'en'
+      ? 'Synth School — Learn Synthwave with MiniFreak'
+      : 'Synth School — Lär dig Synthwave med MiniFreak';
+
+    const heroSub = document.querySelector('.hero-subtitle');
+    if (heroSub) heroSub.textContent = I18n.t('hero_subtitle');
+
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    if (sidebarToggle) sidebarToggle.title = I18n.t('sidebar_title');
+
+    const profileBtn = document.getElementById('nav-profile-btn');
+    if (profileBtn) profileBtn.title = I18n.t('profile_btn_title');
+
+    const pianoOpenBtn = document.getElementById('piano-open-btn');
+    if (pianoOpenBtn) pianoOpenBtn.title = I18n.t('piano_btn_title');
+
+    const pianoTitle = document.querySelector('#piano-overlay-header span');
+    if (pianoTitle) pianoTitle.textContent = I18n.t('piano_title');
+
+    // Piano overlay controls (Wave / Octave / Volume labels)
+    const pianoLabels = document.querySelectorAll('#piano-overlay-controls label');
+    const labelKeys = ['wave_label', 'octave_label', 'volume_label'];
+    pianoLabels.forEach((lbl, i) => {
+      if (labelKeys[i]) lbl.firstChild.textContent = I18n.t(labelKeys[i]) + ' ';
+    });
+
+    const langBtn = document.getElementById('nav-lang-btn');
+    if (langBtn) langBtn.textContent = lang === 'en' ? '🇸🇪' : '🇬🇧';
+
+    updateProgressBar();
+  }
+
+  // ── Toggle language (called from nav lang button) ─────────────
+  function toggleLang() {
+    const newLang = I18n.getLang() === 'sv' ? 'en' : 'sv';
+    I18n.setLang(newLang);
+
+    // Persist lang
+    if (ProfileManager.isAvailable()) {
+      const active = ProfileManager.getActive();
+      if (active) ProfileManager.update(active.id, { lang: newLang });
+    }
+    try { localStorage.setItem('synthSchoolLang', newLang); } catch {}
+
+    // Re-render
+    applyUILang();
+    buildSidebar();
+    if (state.currentScreen === 'lesson' && state.currentLessonId) {
+      renderLesson(state.currentLessonId);
+    } else {
+      startApp();
+    }
   }
 
   // ── startApp — runs after profile is resolved ─────────────────
   function startApp() {
+    applyUILang();
     buildSidebar();
     updateProgressBar();
     animateHeroWaveform();
@@ -861,6 +962,7 @@ var App = (() => {
     // Start button
     const startBtn = document.getElementById('start-btn');
     if (startBtn) {
+      startBtn.textContent = I18n.t('start_btn');
       startBtn.onclick = () => navigateTo(1);
     }
 
@@ -869,9 +971,9 @@ var App = (() => {
     const contBtn = document.getElementById('continue-btn');
     if (contBtn) {
       if (lastVisited) {
-        const les = window.LESSONS[lastVisited];
+        const les = I18n.getLessons()[lastVisited];
         contBtn.style.display = '';
-        contBtn.textContent   = `FORTSÄTT L${lastVisited}: ${les?.title?.toUpperCase() || ''}`;
+        contBtn.textContent   = `${I18n.t('continue_prefix')} L${lastVisited}: ${les?.title?.toUpperCase() || ''}`;
         contBtn.onclick = () => navigateTo(lastVisited);
       } else {
         contBtn.style.display = 'none';
@@ -882,16 +984,16 @@ var App = (() => {
     const grid = document.getElementById('module-overview-grid');
     if (grid) {
       grid.innerHTML = '';
-      window.MODULES.forEach(mod => {
+      I18n.getModules().forEach(mod => {
         const completed = mod.lessonIds.filter(id => Progress.isCompleted(id)).length;
         const card = document.createElement('div');
         card.className = `module-card module-${mod.id}`;
         card.style.setProperty('--accent', mod.color);
         card.innerHTML = `
-          <div class="module-card-num">MODUL ${mod.id}</div>
+          <div class="module-card-num">${I18n.t('module_label')} ${mod.id}</div>
           <div class="module-card-title">${mod.title}</div>
           <div class="module-card-subtitle">${mod.subtitle}</div>
-          <div class="module-card-lessons">${completed}/${mod.lessonIds.length} lektioner klara</div>
+          <div class="module-card-lessons">${I18n.t('lessons_done', completed, mod.lessonIds.length)}</div>
         `;
         card.addEventListener('click', () => {
           const firstLesson = mod.lessonIds.find(id => Progress.isAccessible(id)) || mod.lessonIds[0];
@@ -908,7 +1010,7 @@ var App = (() => {
     const match = hash.match(/^#lesson-(\d+)$/);
     if (match) {
       const lessonId = parseInt(match[1]);
-      if (window.LESSONS[lessonId]) navigateTo(lessonId);
+      if (I18n.getLessons()[lessonId]) navigateTo(lessonId);
     }
   }
 
@@ -935,6 +1037,15 @@ var App = (() => {
 
     Piano.init();
 
+    // Wire up lang toggle button
+    document.getElementById('nav-lang-btn')?.addEventListener('click', toggleLang);
+
+    // Load persisted lang for localStorage fallback
+    try {
+      const storedLang = localStorage.getItem('synthSchoolLang');
+      if (storedLang) I18n.setLang(storedLang);
+    } catch {}
+
     // Show home screen immediately using localStorage data (no blank screen)
     startApp();
 
@@ -946,6 +1057,7 @@ var App = (() => {
     if (storedId) {
       const profile = await ProfileManager.select(storedId);
       if (profile) {
+        I18n.setLang(profile.lang || 'sv');
         Progress.loadFromProfile(profile);
         updateNavProfile(profile);
         // Refresh home screen UI with profile data if still on home
