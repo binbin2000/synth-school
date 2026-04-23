@@ -38,14 +38,15 @@ var App = (() => {
     },
 
     save() {
+      // Always write localStorage immediately as reliable backup
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this._cache));
+      } catch (e) {
+        showToast('Progress kan inte sparas i privat läge.');
+      }
+      // Also schedule API save when a profile is active
       if (ProfileManager.isAvailable()) {
         ProfileManager.scheduleProgressSave(this._cache);
-      } else {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(this._cache));
-        } catch (e) {
-          showToast('Progress kan inte sparas i privat läge.');
-        }
       }
     },
 
@@ -56,6 +57,10 @@ var App = (() => {
       } else {
         this._cache = this._default();
       }
+      // Mirror to localStorage so offline fallback stays current
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this._cache));
+      } catch (e) { /* private mode */ }
     },
 
     markComplete(lessonId, quizScore, quizTotal, passed) {
@@ -78,9 +83,23 @@ var App = (() => {
       return this.load().lessons[lessonId]?.completed === true;
     },
 
+    skip(lessonId) {
+      const d = this.load();
+      if (d.lessons[lessonId]?.completed) return; // don't overwrite a completed lesson
+      d.lessons[lessonId] = { ...d.lessons[lessonId], skipped: true };
+      d.lastVisited = lessonId;
+      this.save();
+      buildSidebar();
+    },
+
+    isSkipped(lessonId) {
+      const entry = this.load().lessons[lessonId];
+      return entry?.skipped === true && !entry?.completed;
+    },
+
     isAccessible(lessonId) {
       if (lessonId === 1) return true;
-      return this.isCompleted(lessonId - 1);
+      return this.isCompleted(lessonId - 1) || this.isSkipped(lessonId - 1);
     },
 
     getCompletedCount() {
@@ -145,6 +164,7 @@ var App = (() => {
         const lesson = window.LESSONS[lid];
         if (!lesson) return;
         const completed = Progress.isCompleted(lid);
+        const skipped   = Progress.isSkipped(lid);
         const accessible = Progress.isAccessible(lid);
         const active = lid === state.currentLessonId;
 
@@ -152,11 +172,12 @@ var App = (() => {
         li.className = 'lesson-item' +
           (active ? ' active' : '') +
           (completed ? ' completed' : '') +
+          (skipped ? ' skipped' : '') +
           (!accessible && !active ? ' locked' : '');
 
         const icon = document.createElement('span');
         icon.className = 'lesson-status-icon';
-        icon.textContent = completed ? '✓' : (!accessible ? '🔒' : '○');
+        icon.textContent = completed ? '✓' : (skipped ? '⤵' : (!accessible ? '🔒' : '○'));
 
         const title = document.createElement('span');
         title.className = 'lesson-title';
@@ -246,9 +267,32 @@ var App = (() => {
     if (nextBtn) nextBtn.style.display = 'none';
 
     const completed = Progress.isCompleted(lessonId);
+    const skipped   = Progress.isSkipped(lessonId);
+
+    // Remove any previous skip button
+    document.getElementById('skip-lesson-btn')?.remove();
+
+    if (!completed) {
+      const skipBtn = document.createElement('button');
+      skipBtn.id = 'skip-lesson-btn';
+      skipBtn.className = 'btn-skip-lesson';
+      skipBtn.textContent = 'HOPPA ÖVER →';
+      skipBtn.title = 'Hoppa över den här lektionen och fortsätt';
+      skipBtn.addEventListener('click', () => {
+        Progress.skip(lessonId);
+        const nextId = lessonId + 1;
+        if (window.LESSONS[nextId]) {
+          navigateTo(nextId);
+        } else {
+          navigateTo(null);
+        }
+      });
+      statusEl.after(skipBtn);
+    }
+
     statusEl.innerHTML = completed
       ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--neon-green)">✓ AVKLARAD</span>`
-      : '';
+      : (skipped ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--neon-purple)">⤵ HOPPAD ÖVER</span>` : '');
   }
 
   // ── Block renderer ────────────────────────────────────────────
@@ -891,23 +935,21 @@ var App = (() => {
 
     Piano.init();
 
-    // Profile resolution
+    // Show home screen immediately using localStorage data (no blank screen)
+    startApp();
+
+    // Then try to resolve a profile in the background
     const apiAvailable = await ProfileManager.detectAPI();
+    if (!apiAvailable) return; // already running with localStorage
 
-    if (!apiAvailable) {
-      // Offline / local-file mode — use localStorage as before
-      startApp();
-      return;
-    }
-
-    // API available — try to restore last-used profile
     const storedId = ProfileManager.getStoredId();
     if (storedId) {
       const profile = await ProfileManager.select(storedId);
       if (profile) {
         Progress.loadFromProfile(profile);
         updateNavProfile(profile);
-        startApp();
+        // Refresh home screen UI with profile data if still on home
+        if (state.currentScreen === 'home') startApp();
         return;
       }
     }

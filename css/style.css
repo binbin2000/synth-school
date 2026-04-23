@@ -220,6 +220,7 @@ code {
   color: var(--neon-cyan);
 }
 .lesson-item.completed { color: var(--text-secondary); }
+.lesson-item.skipped  { color: var(--text-secondary); }
 .lesson-item.locked {
   color: var(--text-muted);
   pointer-events: none;
@@ -234,8 +235,9 @@ code {
   color: var(--text-muted);
 }
 .lesson-item.completed .lesson-status-icon { color: var(--neon-green); }
-.lesson-item.active .lesson-status-icon { color: var(--neon-cyan); }
-.lesson-item.locked .lesson-status-icon { color: var(--text-muted); }
+.lesson-item.skipped  .lesson-status-icon  { color: var(--neon-purple); }
+.lesson-item.active .lesson-status-icon    { color: var(--neon-cyan); }
+.lesson-item.locked .lesson-status-icon    { color: var(--text-muted); }
 
 .lesson-title { flex: 1; }
 
@@ -407,6 +409,24 @@ code {
   padding-top: 1.5rem;
   border-top: 1px solid var(--bg-border);
   gap: 1rem;
+}
+
+.btn-skip-lesson {
+  background: transparent;
+  border: 1px solid var(--neon-purple);
+  color: var(--neon-purple);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .7rem;
+  padding: .4rem .9rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  letter-spacing: .06em;
+  transition: background .15s, box-shadow .15s;
+  margin-left: auto;
+}
+.btn-skip-lesson:hover {
+  background: rgba(191,95,255,.12);
+  box-shadow: var(--glow-purple);
 }
 
 /* ── Content Blocks ──────────────────────────────────────────── */

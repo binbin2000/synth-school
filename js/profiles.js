@@ -13,9 +13,10 @@ var ProfileManager = (() => {
   // ── API detection ─────────────────────────────────────────────
 
   async function detectAPI() {
+    if (location.protocol === 'file:') { _available = false; return false; }
     try {
       const ctrl = new AbortController();
-      const tid  = setTimeout(() => ctrl.abort(), 2000);
+      const tid  = setTimeout(() => ctrl.abort(), 1500);
       const res  = await fetch(`${API}/profiles`, { signal: ctrl.signal });
       clearTimeout(tid);
       _available = res.ok;
